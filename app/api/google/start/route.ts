@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { supabaseServer } from "../../../../lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET() {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;

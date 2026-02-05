@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "../../../../lib/supabase-server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 function getCookie(req: Request, name: string) {
   const cookie = req.headers.get("cookie") || "";
@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(dashboardUrl);
   }
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: userData } = await supabase.auth.getUser();
 
   if (!userData.user) {
