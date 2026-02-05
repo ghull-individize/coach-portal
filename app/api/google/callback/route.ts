@@ -87,6 +87,8 @@ export async function GET(req: Request) {
     return NextResponse.redirect(dashboardUrl);
   }
 
+  // VERCEL_MARKER_20260205_AWAIT_SUPABASESERVER
+
   const supabase = await supabaseServer();
   const { data: userData } = await supabase.auth.getUser();
 
