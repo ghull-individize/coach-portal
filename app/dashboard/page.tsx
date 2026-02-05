@@ -30,8 +30,6 @@ export default function DashboardPage() {
 
       if (!user) {
         setEmail(null);
-        setUserId(null);
-        setCalendarId(null);
         setLoading(false);
         return;
       }
