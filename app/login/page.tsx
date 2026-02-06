@@ -133,3 +133,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+// DEPLOY_MARKER_LOGIN_PASSWORD_ENABLED
