@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import SiteHeader from "@/app/components/SiteHeader";
 import { shell, brand } from "./ui";
 
 export default function DashboardPage() {
@@ -31,7 +30,6 @@ export default function DashboardPage() {
 
   return (
     <div style={shell.page}>
-      <SiteHeader />
 
       <div style={shell.container}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
