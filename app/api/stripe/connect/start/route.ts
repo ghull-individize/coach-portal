@@ -12,14 +12,21 @@ export async function GET() {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-  const { data: coach } = await supabase
-    .from("coach_profile")
+  // Read existing from clients (id = auth user id)
+  const { data: clientRow, error: readErr } = await supabase
+    .from("clients")
     .select("stripe_account_id")
-    .eq("user_id", user.id)
-    .single();
+    .eq("id", user.id)
+    .maybeSingle();
 
-  let stripeAccountId = (coach?.stripe_account_id as string | null) ?? null;
+  if (readErr) {
+    console.error("Stripe start: clients read error:", readErr);
+    return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=read_failed`);
+  }
 
+  let stripeAccountId = (clientRow?.stripe_account_id as string | null) ?? null;
+
+  // Create a new Express account if missing
   if (!stripeAccountId) {
     const acct = await stripe.accounts.create({
       type: "express",
@@ -29,9 +36,21 @@ export async function GET() {
 
     stripeAccountId = acct.id;
 
-    await supabase
-      .from("coach_profile")
-      .upsert({ user_id: user.id, stripe_account_id: stripeAccountId }, { onConflict: "user_id" });
+    const { error: upsertErr } = await supabase
+      .from("clients")
+      .upsert(
+        {
+          id: user.id,
+          stripe_account_id: stripeAccountId,
+          stripe_connected_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (upsertErr) {
+      console.error("Stripe start: clients upsert error:", upsertErr);
+      return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=upsert_failed`);
+    }
   }
 
   const refresh_url = `${siteUrl}/dashboard/connections?stripe=refresh`;

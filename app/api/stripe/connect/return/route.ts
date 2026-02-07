@@ -12,13 +12,18 @@ export async function GET() {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-  const { data: coach } = await supabase
-    .from("coach_profile")
+  const { data: clientRow, error: readErr } = await supabase
+    .from("clients")
     .select("stripe_account_id")
-    .eq("user_id", user.id)
-    .single();
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const stripeAccountId = (coach?.stripe_account_id as string | null) ?? null;
+  if (readErr) {
+    console.error("Stripe return: clients read error:", readErr);
+    return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=read_failed`);
+  }
+
+  const stripeAccountId = (clientRow?.stripe_account_id as string | null) ?? null;
   if (!stripeAccountId) {
     return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=missing_account`);
   }
@@ -29,12 +34,23 @@ export async function GET() {
     (acct as any).details_submitted === true &&
     (acct as any).charges_enabled === true;
 
-  await supabase
-    .from("coach_profile")
+  // Save status + timestamp in clients
+  const { error: upsertErr } = await supabase
+    .from("clients")
     .upsert(
-      { user_id: user.id, stripe_onboarding_complete: complete },
-      { onConflict: "user_id" }
+      {
+        id: user.id,
+        stripe_connected_at: new Date().toISOString(),
+        // optional if you have this column; if you don't, remove it:
+        stripe_onboarding_complete: complete,
+      },
+      { onConflict: "id" }
     );
+
+  if (upsertErr) {
+    console.error("Stripe return: clients upsert error:", upsertErr);
+    return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=upsert_failed`);
+  }
 
   return NextResponse.redirect(
     `${siteUrl}/dashboard/connections?stripe=${complete ? "connected" : "incomplete"}`
