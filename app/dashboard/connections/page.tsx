@@ -232,7 +232,7 @@ export default function ConnectionsPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Paste your chatbot ID so n8n can route bookings to your Stripe + Calendar.
+                  Paste your chatbot ID so Individize can route bookings to your Stripe + Calendar.
                 </p>
               </div>
               <div style={shell.badge(chatbotConnected)}>
