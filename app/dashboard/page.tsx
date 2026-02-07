@@ -1,58 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function DashboardPage() {
   const [email, setEmail] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [calendarId, setCalendarId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const urlParams = useMemo(() => {
-    if (typeof window === "undefined") return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
-  }, []);
-
-  const gc = urlParams.get("gc");
-  const gcError = urlParams.get("gc_error");
+  const [debug, setDebug] = useState<string | null>(null);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
+    (async () => {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error("supabase.auth.getUser error:", error.message);
+      if (sessionError) {
+        setDebug(`getSession error: ${sessionError.message}`);
+        setLoading(false);
+        return;
       }
 
-      const user = data?.user ?? null;
-
+      const user = sessionData.session?.user;
       if (!user) {
-        setEmail(null);
+        setDebug("No session found.");
         setLoading(false);
         return;
       }
 
       setEmail(user.email ?? null);
-      setUserId(user.id);
-
-      // IMPORTANT: read from the SAFE VIEW (does NOT expose refresh token)
-      const { data: row, error: viewErr } = await supabase
-        .from("v_coach_google_safe")
-        .select("google_calendar_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (viewErr) {
-        console.error("v_coach_google_safe read error:", viewErr.message);
-      }
-
-      setCalendarId(row?.google_calendar_id ?? null);
       setLoading(false);
-    }
-
-    load();
+    })();
   }, []);
 
   async function handleLogout() {
@@ -60,70 +35,41 @@ export default function DashboardPage() {
     window.location.href = "/login";
   }
 
-  if (loading) {
-    return <div style={{ padding: 40 }}>Loading...</div>;
-  }
+  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
 
-  if (!email || !userId) {
+  if (!email) {
     return (
       <div style={{ padding: 40 }}>
         <h1>Dashboard</h1>
         <p>You are not logged in.</p>
         <a href="/login">Go to login</a>
+        {debug && <pre style={{ marginTop: 16, opacity: 0.8 }}>{debug}</pre>}
       </div>
     );
   }
 
   return (
-    <div style={{ padding: 40, maxWidth: 760 }}>
-      <h1 style={{ marginBottom: 6 }}>Coach Dashboard</h1>
-      <p style={{ marginTop: 0 }}>
+    <div style={{ padding: 40 }}>
+      <h1>Coach Dashboard</h1>
+      <p>
         Logged in as <b>{email}</b>
       </p>
 
-      <div style={{ marginTop: 28, padding: 16, border: "1px solid #2a2a2a", borderRadius: 10 }}>
-        <h2 style={{ marginTop: 0 }}>Google Calendar</h2>
+      <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
+        <a
+          href="/dashboard/connections"
+          style={{
+            display: "inline-block",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #333",
+            textDecoration: "none",
+          }}
+        >
+          Manage Connections (Google + Stripe)
+        </a>
 
-        {gc === "connected" && (
-          <p style={{ marginTop: 8 }}>✅ Google Calendar connected.</p>
-        )}
-        {gcError && (
-          <p style={{ marginTop: 8 }}>❌ Google Calendar error: <code>{gcError}</code></p>
-        )}
-
-        {calendarId ? (
-          <div style={{ marginTop: 10 }}>
-            <p style={{ margin: 0 }}>
-              Connected Calendar ID:
-            </p>
-            <code style={{ display: "inline-block", marginTop: 6 }}>
-              {calendarId}
-            </code>
-          </div>
-        ) : (
-          <div style={{ marginTop: 10 }}>
-            <p style={{ margin: 0 }}>
-              Not connected yet.
-            </p>
-            <a
-              href="/api/google/start"
-              style={{
-                display: "inline-block",
-                marginTop: 10,
-                padding: "10px 12px",
-                border: "1px solid #ccc",
-                borderRadius: 8,
-                textDecoration: "none",
-              }}
-            >
-              Connect Google Calendar
-            </a>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 24 }}>
-        <button onClick={handleLogout} style={{ padding: "10px 12px" }}>
+        <button onClick={handleLogout} style={{ padding: "10px 12px", borderRadius: 10 }}>
           Logout
         </button>
       </div>
