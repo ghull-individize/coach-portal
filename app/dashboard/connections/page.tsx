@@ -134,7 +134,6 @@ export default function ConnectionsPage() {
         </div>
 
         <div style={{ marginTop: 20, color: "rgba(0,0,0,0.55)", fontWeight: 600, fontSize: 13 }}>
-          Need help? We can add a support link here next.
         </div>
       </div>
     </div>
