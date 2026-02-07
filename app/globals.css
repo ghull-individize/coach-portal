@@ -170,3 +170,45 @@ body {
   .btn:active { transform: scale(0.985); }
   .btnSecondary:active { transform: scale(0.99); }
 }
+
+/* --- Button interactions (hover/active/focus) --- */
+.btn, .btnSecondary {
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, background 120ms ease, border-color 120ms ease;
+  will-change: transform;
+}
+
+.btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.14);
+}
+
+.btn:active {
+  transform: translateY(0px) scale(0.98);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+  filter: brightness(0.98);
+}
+
+.btnSecondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.10);
+  border-color: rgba(0,0,0,0.18);
+}
+
+.btnSecondary:active {
+  transform: translateY(0px) scale(0.985);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+/* Keyboard accessibility */
+.btn:focus-visible,
+.btnSecondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0,0,0,0.10), 0 14px 36px rgba(0,0,0,0.12);
+}
+
+/* Better tap feel on mobile */
+@media (hover: none) {
+  .btn:active { transform: scale(0.985); }
+  .btnSecondary:active { transform: scale(0.99); }
+}
