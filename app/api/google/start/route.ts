@@ -1,43 +1,40 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET() {
   const supabase = await supabaseServer();
-  const { data } = await supabase.auth.getUser();
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
-  if (!data.user) {
-    return NextResponse.redirect(new URL("/login", siteUrl));
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+
+  if (userErr || !user) {
+    return NextResponse.redirect(new URL("/login?e=not_logged_in", siteUrl));
+  }
+
+  if (!clientId) {
+    return NextResponse.redirect(new URL("/dashboard/connections?gc=error&error=missing_google_env", siteUrl));
   }
 
   const redirectUri = `${siteUrl}/api/google/callback`;
-  const state = crypto.randomBytes(16).toString("hex");
+  const scope = "https://www.googleapis.com/auth/calendar.readonly";
 
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    access_type: "offline",
-    prompt: "consent",
-    scope: [
-      "https://www.googleapis.com/auth/calendar.readonly",
-      "https://www.googleapis.com/auth/calendar.events",
-    ].join(" "),
-    state,
-  });
+  // Simple state: user id (OK for now)
+  const state = user.id;
 
-  const res = NextResponse.redirect(
-    `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-  );
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", scope);
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", "consent");
+  authUrl.searchParams.set("include_granted_scopes", "true");
+  authUrl.searchParams.set("state", state);
 
-  res.cookies.set("google_oauth_state", state, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 10 * 60,
-  });
-
-  return res;
+  return NextResponse.redirect(authUrl.toString());
 }
