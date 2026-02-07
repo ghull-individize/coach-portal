@@ -91,7 +91,7 @@ export default function ConnectionsPage() {
       const { data, error } = await supabase
         .from("clients")
         .select(
-          "stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at"
+          "stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_id,chatbot_url"
         )
         .eq("id", user.id)
         .single();
