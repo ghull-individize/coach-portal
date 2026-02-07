@@ -1,30 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
+import SiteHeader from "@/app/components/SiteHeader";
+import { shell, brand } from "./ui";
 
 export default function DashboardPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [debug, setDebug] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        setDebug(`getSession error: ${sessionError.message}`);
-        setLoading(false);
-        return;
-      }
-
-      const user = sessionData.session?.user;
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
       if (!user) {
-        setDebug("No session found.");
-        setLoading(false);
+        window.location.href = "/login";
         return;
       }
-
       setEmail(user.email ?? null);
       setLoading(false);
     })();
@@ -35,43 +27,43 @@ export default function DashboardPage() {
     window.location.href = "/login";
   }
 
-  if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
-
-  if (!email) {
-    return (
-      <div style={{ padding: 40 }}>
-        <h1>Dashboard</h1>
-        <p>You are not logged in.</p>
-        <a href="/login">Go to login</a>
-        {debug && <pre style={{ marginTop: 16, opacity: 0.8 }}>{debug}</pre>}
-      </div>
-    );
-  }
+  if (loading) return <div style={shell.page}>Loading…</div>;
 
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Coach Dashboard</h1>
-      <p>
-        Logged in as <b>{email}</b>
-      </p>
+    <div style={shell.page}>
+      <SiteHeader />
 
-      <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
-        <a
-          href="/dashboard/connections"
-          style={{
-            display: "inline-block",
-            padding: "10px 12px",
-            borderRadius: 10,
-            border: "1px solid #333",
-            textDecoration: "none",
-          }}
-        >
-          Manage Connections (Google + Stripe)
-        </a>
+      <div style={shell.container}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={shell.h1}>
+              Coach <span style={{ color: brand.blue, textDecoration: "underline", textDecorationThickness: 3 }}>Dashboard</span>
+            </h1>
+            <div style={shell.subtitle}>Signed in as {email}</div>
+          </div>
 
-        <button onClick={handleLogout} style={{ padding: "10px 12px", borderRadius: 10 }}>
-          Logout
-        </button>
+          <button onClick={handleLogout} style={shell.buttonGhost}>
+            Logout
+          </button>
+        </div>
+
+        <div style={{ marginTop: 22, display: "grid", gap: 16 }}>
+          <div style={shell.card}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Connections</h2>
+            <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+              Connect Google Calendar and Stripe so paid bookings automatically sync.
+            </p>
+
+            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href="/dashboard/connections" style={{ textDecoration: "none" }}>
+                <span style={shell.buttonBlue as any}>Manage Connections</span>
+              </a>
+              <a href="https://www.individize.com" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                <span style={shell.buttonGhost as any}>Back to Site</span>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
