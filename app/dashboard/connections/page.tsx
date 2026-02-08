@@ -116,7 +116,7 @@ export default function ConnectionsPage() {
         .select(
           "stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url"
         )
-        .eq("id", user.id)
+        .eq("user_id", user.id)
         .single();
 
       if (error) setErr(error.message);
@@ -151,7 +151,7 @@ export default function ConnectionsPage() {
       const { error } = await supabase
         .from("clients")
         .update({ chatbot_key: cleanKey, chatbot_url: cleanUrl })
-        .eq("id", user.id);
+        .eq("user_id", user.id);
 
       if (error) throw new Error(error.message);
 
