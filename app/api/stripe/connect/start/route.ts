@@ -3,40 +3,48 @@ import Stripe from "stripe";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
   const supabase = await supabaseServer();
 
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  const { data: sessionData } = await supabase.auth.getSession();
-
-  const user = userData.user ?? sessionData.session?.user ?? null;
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
-  if (!user) {
-    console.log("stripe/start not logged in", userErr?.message ?? null);
-    return NextResponse.redirect(`${siteUrl}/login?e=not_logged_in`);
+  // Use session (cookie-backed) and treat this route as dynamic
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr || !sessionData.session?.user) {
+    return NextResponse.redirect(`${siteUrl}/login?e=not_logged_in`, {
+      status: 307,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
-  console.log("stripe/start user:", user.id, user.email);
+  const user = sessionData.session.user;
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=missing_secret`, {
+      status: 307,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
 
-  // IMPORTANT: lookup by user_id (canonical)
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  // IMPORTANT: we key client rows by user_id (NOT id)
   const { data: clientRow, error: readErr } = await supabase
     .from("clients")
-    .select("id, stripe_account_id")
+    .select("stripe_account_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (readErr) {
     console.error("Stripe start: clients read error:", readErr);
-    return NextResponse.redirect(
-      `${siteUrl}/dashboard/connections?stripe_error=read_failed`
-    );
+    return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=read_failed`, {
+      status: 307,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
-  let stripeAccountId = clientRow?.stripe_account_id ?? null;
+  let stripeAccountId = (clientRow?.stripe_account_id as string | null) ?? null;
 
   if (!stripeAccountId) {
     const acct = await stripe.accounts.create({
@@ -47,7 +55,7 @@ export async function GET() {
 
     stripeAccountId = acct.id;
 
-    const { error: updateErr } = await supabase
+    const { error: upsertErr } = await supabase
       .from("clients")
       .update({
         stripe_account_id: stripeAccountId,
@@ -55,11 +63,12 @@ export async function GET() {
       })
       .eq("user_id", user.id);
 
-    if (updateErr) {
-      console.error("Stripe start: clients update error:", updateErr);
-      return NextResponse.redirect(
-        `${siteUrl}/dashboard/connections?stripe_error=update_failed`
-      );
+    if (upsertErr) {
+      console.error("Stripe start: clients update error:", upsertErr);
+      return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=upsert_failed`, {
+        status: 307,
+        headers: { "Cache-Control": "no-store" },
+      });
     }
   }
 
@@ -73,5 +82,8 @@ export async function GET() {
     type: "account_onboarding",
   });
 
-  return NextResponse.redirect(link.url);
+  return NextResponse.redirect(link.url, {
+    status: 303,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
