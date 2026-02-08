@@ -3,20 +3,42 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header style={styles.header} style={{ width: "100%", borderBottom: "1px solid rgba(0,0,0,0.08)", background: "#fff" }}>
-      <div style={styles.inner} style={{ maxWidth: 1240, margin: "0 auto", width: "100%", padding: "16px clamp(16px, 3vw, 36px)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+    <header
+      style={{
+        ...styles.header,
+        width: "100%",
+        borderBottom: "1px solid rgba(0,0,0,0.08)",
+        background: "#fff",
+      }}
+    >
+      <div
+        style={{
+          ...styles.inner,
+          maxWidth: 1240,
+          margin: "0 auto",
+          width: "100%",
+          padding: "16px clamp(16px, 3vw, 36px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
         <Link href="/dashboard" style={styles.brand}>
-          <Image
-            src="/logo.png"
-            alt="Individize"
-            width={34}
-            height={34}
-            priority
-          />
+          <Image src="/logo.png" alt="Individize" width={34} height={34} priority />
           <span style={styles.brandText}>Individize</span>
         </Link>
 
-        <nav style={styles.nav} style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+        <nav
+          style={{
+            ...styles.nav,
+            display: "flex",
+            alignItems: "center",
+            gap: 18,
+            flexWrap: "wrap",
+          }}
+        >
           <a href="https://www.individize.com" style={styles.link} target="_blank" rel="noreferrer">
             Home
           </a>
