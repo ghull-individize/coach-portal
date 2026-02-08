@@ -4,19 +4,28 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function GET() {
   const supabase = await supabaseServer();
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
-  if (!user) return NextResponse.redirect(`${siteUrl}/login`);
+  // IMPORTANT: getSession is more reliable than getUser in this setup
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  const user = sessionData.session?.user;
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!siteUrl) return NextResponse.json({ error: "missing NEXT_PUBLIC_SITE_URL" }, { status: 500 });
 
-  // Read existing from clients (id = auth user id)
+  if (sessionErr || !user) {
+    return NextResponse.redirect(`${siteUrl}/login?e=not_logged_in`);
+  }
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) return NextResponse.json({ error: "missing STRIPE_SECRET_KEY" }, { status: 500 });
+
+  const stripe = new Stripe(stripeKey);
+
+  // Canonical lookup: user_id = auth.users.id
   const { data: clientRow, error: readErr } = await supabase
     .from("clients")
     .select("stripe_account_id")
-    .eq("id", user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (readErr) {
@@ -26,7 +35,6 @@ export async function GET() {
 
   let stripeAccountId = (clientRow?.stripe_account_id as string | null) ?? null;
 
-  // Create a new Express account if missing
   if (!stripeAccountId) {
     const acct = await stripe.accounts.create({
       type: "express",
@@ -36,19 +44,17 @@ export async function GET() {
 
     stripeAccountId = acct.id;
 
-    const { error: upsertErr } = await supabase
+    // Update the existing row (avoid creating new rows keyed by id)
+    const { error: updErr } = await supabase
       .from("clients")
-      .upsert(
-        {
-          id: user.id,
-          stripe_account_id: stripeAccountId,
-          stripe_connected_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
+      .update({
+        stripe_account_id: stripeAccountId,
+        stripe_connected_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-    if (upsertErr) {
-      console.error("Stripe start: clients upsert error:", upsertErr);
+    if (updErr) {
+      console.error("Stripe start: clients update error:", updErr);
       return NextResponse.redirect(`${siteUrl}/dashboard/connections?stripe_error=upsert_failed`);
     }
   }
