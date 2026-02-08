@@ -9,8 +9,6 @@ export async function GET() {
   return Response.json({
     ok: !error,
     error: error?.message ?? null,
-    user: data.user
-      ? { id: data.user.id, email: data.user.email }
-      : null,
+    user: data.user ? { id: data.user.id, email: data.user.email } : null,
   });
 }
