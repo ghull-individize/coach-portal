@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import Header from "./components/Header";
 import "./globals.css";
+import "./interactions.css";
+import Header from "./components/Header";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Individize Coach Portal",
-  description: "Coach portal for managing integrations and settings.",
+  description: "Coach portal for connecting Google Calendar + Stripe.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
