@@ -14,25 +14,18 @@ export default function ResetPasswordPage() {
     (async () => {
       setMessage(null);
 
-      // Support both styles:
-      // 1) /reset-password?code=XXXX   (PKCE/code flow)
-      // 2) /reset-password#access_token=...&type=recovery  (hash token flow)
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
+      // 1) Try to load session (Supabase reads URL hash internally)
+      let { data } = await supabase.auth.getSession();
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          setMessage(`Reset link error: ${error.message}`);
-          setReady(false);
-          return;
-        }
+      // 2) If missing, force a user fetch (often triggers parsing of hash tokens)
+      if (!data.session) {
+        await supabase.auth.getUser();
+        data = (await supabase.auth.getSession()).data;
       }
 
-      const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        setMessage("Auth session missing! Please use the reset link from your email.");
         setReady(false);
+        setMessage("Auth session missing! Your reset link is invalid/expired. Please request a new reset email.");
         return;
       }
 
@@ -52,7 +45,7 @@ export default function ResetPasswordPage() {
     setMessage(null);
 
     if (!ready) {
-      setMessage("Auth session missing! Please use the reset link from your email.");
+      setMessage("Auth session missing! Please request a new reset email.");
       return;
     }
 
@@ -71,7 +64,7 @@ export default function ResetPasswordPage() {
 
     if (error) setMessage(error.message);
     else {
-      setMessage("✅ Password updated. You can now log in.");
+      setMessage("✅ Password updated. Redirecting to login...");
       setTimeout(() => (window.location.href = "/login"), 1200);
     }
   }
