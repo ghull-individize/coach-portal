@@ -111,21 +111,29 @@ export default function ConnectionsPage() {
 
       setEmail(user.email ?? null);
 
-      const { data, error } = await supabase
+      const { data: rows, error } = await supabase
         .from("clients")
-        .select(
-          "stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url"
-        )
+        .select("stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url")
         .eq("user_id", user.id)
-        .single();
+        .order("created_at", { ascending: false });
 
       if (error) setErr(error.message);
       else {
-        const r = data as ClientRow;
-        setRow(r);
-        setChatbotKey(r.chatbot_key ?? "");
-        setChatbotUrl(r.chatbot_url ?? "");
+        const data = (rows && rows.length ? rows[0] : null) as any;
+        if (!data) {
+          // No client row yet
+          setRow(null as any);
+          setChatbotKey("");
+          setChatbotUrl("");
+        } else {
+          const r = data as ClientRow;
+          setRow(r);
+          setChatbotKey(r.chatbot_key ?? "");
+          setChatbotUrl(r.chatbot_url ?? "");
+        }
       }
+
+
 
       setLoading(false);
     })();
