@@ -1,120 +1,195 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import type { FormEvent } from "react";
+import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
-  async function signInWithPassword() {
-    setBusy(true);
-    setMsg(null);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<null | "reset_sent" | "signup_sent">(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showForgot, setShowForgot] = useState(false);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  function isBadPasswordError(message: string) {
+    const m = message.toLowerCase();
+    return m.includes("invalid") && m.includes("credential");
+  }
 
-    setBusy(false);
+  async function handlePasswordLogin(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setStatus(null);
 
-    if (error) {
-      setMsg(error.message);
+    if (!email || !password) {
+      setError("Please enter your email and password.");
       return;
     }
 
-    window.location.href = "/dashboard";
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+      if (isBadPasswordError(error.message)) {
+        setShowForgot(true);
+      }
+    } else {
+      window.location.href = "/dashboard";
+    }
   }
 
-  async function signUp() {
-    setBusy(true);
-    setMsg(null);
+  async function handleSignup() {
+    setError(null);
+    setStatus(null);
 
+    if (!email || !password) {
+      setError("Please enter your email and password to create an account.");
+      return;
+    }
+
+    setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
+    setLoading(false);
 
-    setBusy(false);
+    if (error) setError(error.message);
+    else setStatus("signup_sent");
+  }
 
-    if (error) {
-      setMsg(error.message);
+  async function handleForgotPassword() {
+    setError(null);
+    setStatus(null);
+
+    if (!email) {
+      setError("Please enter your email first.");
       return;
     }
 
-    setMsg("Account created. If email confirmation is enabled, check your inbox once. Otherwise you can log in now.");
+    setLoading(true);
+    const redirectTo = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    setLoading(false);
+
+    if (error) setError(error.message);
+    else setStatus("reset_sent");
   }
 
-  async function sendMagicLink() {
-    setBusy(true);
-    setMsg(null);
+  const pageShell: React.CSSProperties = {
+    minHeight: "70vh",
+    display: "grid",
+    placeItems: "center",
+    padding: 20,
+  };
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+  const card: React.CSSProperties = {
+    width: 520,
+    maxWidth: "92vw",
+    padding: 28,
+    borderRadius: 16,
+    background: "white",
+    boxShadow: "0 14px 40px rgba(0,0,0,0.10)",
+    border: "1px solid rgba(0,0,0,0.06)",
+  };
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${siteUrl}/auth/callback` },
-    });
+  const input: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.12)",
+    outline: "none",
+    marginTop: 10,
+  };
 
-    setBusy(false);
+  const primaryBtn: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "none",
+    background: "#6b6b6b",
+    color: "white",
+    fontWeight: 600,
+    marginTop: 14,
+  };
 
-    if (error) {
-      setMsg(error.message);
-      return;
-    }
+  const secondaryBtn: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid rgba(0,0,0,0.12)",
+    background: "white",
+    fontWeight: 600,
+    marginTop: 12,
+  };
 
-    setMsg("Magic link sent. Check your inbox.");
-  }
+  const subtleLink: React.CSSProperties = {
+    display: "inline-block",
+    marginTop: 12,
+    fontSize: 13,
+    opacity: 0.75,
+    cursor: "pointer",
+    textDecoration: "underline",
+  };
 
   return (
-    <div className="pageShell">
-      <div className="card">
-        <h1 className="h1">Login</h1>
-        <p className="sub">
-          Use password login (recommended). Magic link is available as a backup.
+    <div style={pageShell}>
+      <div style={card}>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Login</h1>
+        <p style={{ marginTop: 6, marginBottom: 14, opacity: 0.7 }}>
+          Use password login (recommended).
         </p>
 
-        <div className="field">
+        <form onSubmit={handlePasswordLogin}>
           <input
-            className="input"
-            placeholder="Email"
+            style={input}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
             autoComplete="email"
-            inputMode="email"
           />
-        </div>
-
-        <div className="field">
           <input
-            className="input"
-            placeholder="Password"
+            style={input}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
             autoComplete="current-password"
           />
-        </div>
 
-        <button className="btn" onClick={signInWithPassword} disabled={busy || !email || !password}>
-          Log in with password
-        </button>
-
-        <div className="row">
-          <button className="btnSecondary" onClick={signUp} disabled={busy || !email || !password}>
-            Create account (sign up)
+          <button type="submit" style={primaryBtn} disabled={loading}>
+            {loading ? "Working…" : "Log in"}
           </button>
-        </div>
+        </form>
 
-        <div className="hr" />
-
-        <button className="btnSecondary" onClick={sendMagicLink} disabled={busy || !email}>
-          Send magic link instead
+        <button type="button" style={secondaryBtn} onClick={handleSignup} disabled={loading}>
+          {loading ? "Working…" : "Create account"}
         </button>
 
-        {msg && <div className="notice">{msg}</div>}
+        {showForgot ? (
+          <button type="button" style={secondaryBtn} onClick={handleForgotPassword} disabled={loading}>
+            {loading ? "Working…" : "Forgot password?"}
+          </button>
+        ) : (
+          <span style={subtleLink} onClick={() => setShowForgot(true)}>
+            Forgot password?
+          </span>
+        )}
+
+        {status && (
+          <p style={{ marginTop: 14 }}>
+            ✅ {status === "reset_sent"
+              ? "Password reset email sent. Check your email."
+              : "Account created. Check your email if confirmation is required."}
+          </p>
+        )}
+
+        {error && <p style={{ marginTop: 14, color: "red" }}>{error}</p>}
       </div>
     </div>
   );
