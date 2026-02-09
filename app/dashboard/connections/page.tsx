@@ -119,11 +119,15 @@ export default function ConnectionsPage() {
 
       if (!existingErr && (!existingRows || existingRows.length === 0)) {
         // Create a minimal row; user is creating their own profile via the portal
-        await supabase.from("clients").insert({
+        const { error: insertErr } = await supabase.from("clients").insert({
           user_id: user.id,
           email: user.email,
           name: "",
         });
+
+        if (insertErr) {
+          setErr("bootstrap insert failed: " + insertErr.message);
+        }
       }
 
 
