@@ -110,6 +110,22 @@ export default function ConnectionsPage() {
       }
 
       setEmail(user.email ?? null);
+      // ensureClientRowExists: create a clients row for first-time users (natural bootstrap)
+      const { data: existingRows, error: existingErr } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      if (!existingErr && (!existingRows || existingRows.length === 0)) {
+        // Create a minimal row; user is creating their own profile via the portal
+        await supabase.from("clients").insert({
+          user_id: user.id,
+          email: user.email,
+          name: "",
+        });
+      }
+
 
       const { data: rows, error } = await supabase
         .from("clients")
