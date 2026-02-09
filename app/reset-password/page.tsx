@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function ResetPasswordPage() {
@@ -8,13 +8,53 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setMessage(null);
+
+      // Support both styles:
+      // 1) /reset-password?code=XXXX   (PKCE/code flow)
+      // 2) /reset-password#access_token=...&type=recovery  (hash token flow)
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setMessage(`Reset link error: ${error.message}`);
+          setReady(false);
+          return;
+        }
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setMessage("Auth session missing! Please use the reset link from your email.");
+        setReady(false);
+        return;
+      }
+
+      setReady(true);
+    })();
+  }, []);
 
   const canSubmit =
-    password.length >= 8 && confirm.length >= 8 && password === confirm && !loading;
+    ready &&
+    password.length >= 8 &&
+    confirm.length >= 8 &&
+    password === confirm &&
+    !loading;
 
   async function handleUpdatePassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage(null);
+
+    if (!ready) {
+      setMessage("Auth session missing! Please use the reset link from your email.");
+      return;
+    }
 
     if (password !== confirm) {
       setMessage("Passwords do not match.");
@@ -26,17 +66,13 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-
     const { error } = await supabase.auth.updateUser({ password });
-
     setLoading(false);
 
-    if (error) {
-      setMessage(error.message);
-    } else {
-      setMessage("✅ Password updated. You can now log in with your new password.");
-      // Optional redirect:
-      // setTimeout(() => (window.location.href = "/login"), 1200);
+    if (error) setMessage(error.message);
+    else {
+      setMessage("✅ Password updated. You can now log in.");
+      setTimeout(() => (window.location.href = "/login"), 1200);
     }
   }
 
