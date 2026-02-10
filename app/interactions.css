@@ -1,0 +1,38 @@
+.btn, .btnSecondary {
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease, background 140ms ease, border-color 140ms ease;
+  will-change: transform;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.14);
+}
+
+.btn:active {
+  transform: translateY(0px) scale(0.98);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+  filter: brightness(0.98);
+}
+
+.btnSecondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+  border-color: rgba(0,0,0,0.18);
+}
+
+.btnSecondary:active {
+  transform: translateY(0px) scale(0.985);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+}
+
+.btn:focus-visible,
+.btnSecondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0,0,0,0.10), 0 14px 30px rgba(0,0,0,0.10);
+}
+
+@media (hover: none) {
+  .btn:active { transform: scale(0.985); }
+  .btnSecondary:active { transform: scale(0.99); }
+}
