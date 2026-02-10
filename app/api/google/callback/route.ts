@@ -74,17 +74,20 @@ export async function GET(req: Request) {
     return redirectHome(`?gc=error&error=${encodeURIComponent("missing_refresh_token")}`);
   }
 
-  // Write directly to clients (id = auth.uid())
+  // Persist Google connection (canonical key: clients.user_id = auth.users.id)
   const { error: upsertErr } = await supabase
     .from("clients")
     .upsert(
       {
-        id: user.id,
+        user_id: user.id,
+        email: user.email ?? null,
         google_refresh_token: refreshToken,
         google_connected_at: new Date().toISOString(),
+        google_calendar_id: "primary",
       },
-      { onConflict: "id" }
+      { onConflict: "user_id" }
     );
+
 
   if (upsertErr) {
     console.error("google callback upsert clients failed:", upsertErr);

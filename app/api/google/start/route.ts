@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   const redirectUri = `${siteUrl}/api/google/callback`;
-  const scope = "https://www.googleapis.com/auth/calendar.readonly";
+  const scope = "https://www.googleapis.com/auth/calendar.events";
 
   // Simple state: user id (OK for now)
   const state = user.id;
