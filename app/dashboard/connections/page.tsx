@@ -38,51 +38,255 @@ function PressableButton(
   const pressed = down;
 
   return (
-    <button
-      {...rest}
-      onMouseEnter={(e) => {
-        setHover(true);
-        onMouseEnter?.(e);
-      }}
-      onMouseLeave={(e) => {
-        setHover(false);
-        setDown(false);
-        onMouseLeave?.(e);
-      }}
-      onMouseDown={(e) => {
-        setDown(true);
-        onMouseDown?.(e);
-      }}
-      onMouseUp={(e) => {
-        setDown(false);
-        onMouseUp?.(e);
-      }}
-      onTouchStart={(e) => {
-        setDown(true);
-        onTouchStart?.(e);
-      }}
-      onTouchEnd={(e) => {
-        setDown(false);
-        onTouchEnd?.(e);
-      }}
-      style={{
-        ...baseStyle,
-        ...style,
-        cursor: "pointer",
-        transition: "transform 140ms ease, box-shadow 140ms ease, filter 140ms ease",
-        transform: pressed
-          ? "translateY(0px) scale(0.985)"
-          : raised
-          ? "translateY(-2px)"
-          : "translateY(0px)",
-        boxShadow: pressed
-          ? "0 10px 18px rgba(0,0,0,0.12)"
-          : raised
-          ? "0 18px 36px rgba(0,0,0,0.16)"
-          : "0 12px 22px rgba(0,0,0,0.12)",
-        filter: pressed ? "brightness(0.98)" : raised ? "brightness(1.03)" : "brightness(1)",
-      }}
-    />
+    <div style={shell.page}>
+      <div style={shell.container}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 style={shell.h1}>
+              Connections{" "}
+              <span
+                style={{
+                  display: "inline-block",
+                  marginLeft: 10,
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  background: "rgba(0,0,0,0.06)",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "rgba(0,0,0,0.65)",
+                }}
+              >
+                {email ?? ""}
+              </span>
+            </h1>
+            <p style={shell.sub}>
+              Connect your tools so bookings + payments can be handled automatically.
+            </p>
+            {err && (
+              <div style={{ marginTop: 10, color: "#b00020", fontWeight: 700 }}>
+                {err}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Square */}
+        <div style={shell.card}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Square</h2>
+              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+                Paste your Square payment/checkout link (clients choose their option on Square).
+              </p>
+            </div>
+
+            <div style={shell.badge(squareConnected)}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: squareConnected ? "#00b478" : "#999",
+                }}
+              />
+              {squareConnected ? "Connected" : "Not connected"}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <PressableButton
+              baseStyle={shell.buttonBlue}
+              onClick={() => (window.location.href = "/api/square/start")}
+            >
+              {squareConnected ? "Reconnect Square" : "Connect Square"}
+            </PressableButton>
+
+            <span style={{ color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
+              Connect your Square account, then paste your payment link below.
+            </span>
+          </div>
+
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              value={squareLink}
+              onChange={(e) => setSquareLink(e.target.value)}
+              placeholder="https://square.link/u/..."
+              style={{
+                flex: "1 1 380px",
+                padding: "12px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.14)",
+                fontSize: 15,
+                fontWeight: 700,
+                outline: "none",
+              }}
+            />
+
+            <PressableButton baseStyle={shell.buttonGrey} onClick={saveSquareLink} disabled={squareSaving}>
+              {squareSaving ? "Saving..." : "Save link"}
+            </PressableButton>
+
+            {squareSaved && <span style={{ marginLeft: 6, fontWeight: 800, color: "rgba(0,0,0,0.6)" }}>✅ Saved</span>}
+          </div>
+
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+              How do I connect Square?
+            </summary>
+            <div style={{ marginTop: 10, lineHeight: 1.5, opacity: 0.9 }}>
+              <ol style={{ paddingLeft: 18 }}>
+                <li>Click <b>Connect Square</b> and sign in to your Square account.</li>
+                <li>In Square, create your offerings (Adult / Child / Senior, etc.).</li>
+                <li>Create a <b>Payment Link / Checkout Link</b> in Square.</li>
+                <li>Copy the link and paste it above, then click <b>Save link</b>.</li>
+                <li>Clients will pick their option on Square’s checkout page and pay you directly.</li>
+              </ol>
+              <p style={{ marginTop: 8 }}>
+                Tip: If you update pricing later, just update the Square link you paste here.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        {/* Chatbot */}
+        <div style={shell.card}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
+              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+                Paste your chatbot ID so Individize can route bookings to your calendar + payment link.
+              </p>
+            </div>
+
+            <div style={shell.badge(chatbotConnected)}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: chatbotConnected ? "#00b478" : "#999",
+                }}
+              />
+              {chatbotConnected ? "Connected" : "Not connected"}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <label style={{ fontWeight: 800, fontSize: 14 }}>Paste chatbot ID here:</label>
+              <input
+                value={chatbotKey}
+                onChange={(e) => setChatbotKey(e.target.value)}
+                placeholder="e.g. stammer_abc123"
+                style={{
+                  padding: "12px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gap: 6 }}>
+              <label style={{ fontWeight: 800, fontSize: 14 }}>Chatbot link (optional)</label>
+              <input
+                value={chatbotUrl}
+                onChange={(e) => setChatbotUrl(e.target.value)}
+                placeholder="https://..."
+                style={{
+                  padding: "12px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <PressableButton baseStyle={shell.buttonBlue} onClick={saveChatbot} disabled={chatbotSaving}>
+                {chatbotSaving ? "Saving..." : "Save"}
+              </PressableButton>
+
+              {chatbotSaved && (
+                <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 700 }}>
+                  {chatbotSaved}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Google Calendar */}
+        <div style={shell.card}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Google Calendar</h2>
+              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+                Used to place paid bookings on your schedule automatically.
+              </p>
+            </div>
+
+            <div style={shell.badge(googleConnected)}>
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: googleConnected ? "#00b478" : "#999",
+                }}
+              />
+              {googleConnected ? "Connected" : "Not connected"}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <PressableButton baseStyle={shell.buttonBlue} onClick={() => (window.location.href = "/api/google/start")}>
+              {googleConnected ? "Reconnect Google" : "Connect Google"}
+            </PressableButton>
+
+            <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
+              We’ll request offline access so this keeps working.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -195,8 +399,7 @@ export default function ConnectionsPage() {
       setSquareSaved("saved");
     } catch (e) {
       setSquareSaved(null);
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(msg);
+      alert(e?.message ?? String(e));
     } finally {
       setSquareSaving(false);
     }
@@ -238,8 +441,6 @@ export default function ConnectionsPage() {
   if (loading) return <div style={shell.page}>Loading…</div>;
 
   const googleConnected = !!row?.google_connected_at || !!row?.google_calendar_id;
-  const stripeConnected = !!row?.stripe_account_id;
-  const stripeComplete = !!row?.stripe_onboarding_complete;
   const chatbotConnected = !!(row?.chatbot_key && row.chatbot_key.trim().length > 0);
 
   return (
