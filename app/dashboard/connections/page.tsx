@@ -5,7 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { shell, brand } from "../ui";
 
 type ClientRow = {
-
+stripe_account_id: string | null;
+  stripe_onboarding_complete: boolean | null;
+  stripe_connected_at: string | null;
   google_calendar_id: string | null;
   google_connected_at: string | null;
   chatbot_key: string | null;
@@ -137,7 +139,7 @@ export default function ConnectionsPage() {
 
       const { data: rows, error } = await supabase
         .from("clients")
-        .select("google_calendar_id,google_connected_at,chatbot_key,chatbot_url,square_payment_link,square_connected_at,square_merchant_id")
+        .select("stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -236,8 +238,8 @@ export default function ConnectionsPage() {
   if (loading) return <div style={shell.page}>Loading…</div>;
 
   const googleConnected = !!row?.google_connected_at || !!row?.google_calendar_id;
-
-  const squareConnected = !!row?.square_connected_at || !!row?.square_merchant_id || !!(row as any)?.square_payment_link;
+  const stripeConnected = !!row?.stripe_account_id;
+  const stripeComplete = !!row?.stripe_onboarding_complete;
   const chatbotConnected = !!(row?.chatbot_key && row.chatbot_key.trim().length > 0);
 
   return (
@@ -348,15 +350,12 @@ export default function ConnectionsPage() {
           </p>
         </div>
       </details>
-    </div>
-
-    <div style={shell.card}>
 
 
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
     
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Paste your chatbot ID so Individize can route bookings to your Payments + Calendar.
+                  Paste your chatbot ID so Individize can route bookings to your Stripe + Calendar.
                 </p>
               </div>
               <div style={shell.badge(chatbotConnected)}>
@@ -462,7 +461,53 @@ export default function ConnectionsPage() {
             </div>
           </div>
 
+          {/* Stripe */}
+          <div style={shell.card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stripe</h2>
+                <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+                  Lets clients pay, then your booking gets marked as paid and synced.
+                </p>
+              </div>
+              <div style={shell.badge(stripeConnected && stripeComplete)}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: stripeConnected ? "#00b478" : "#999",
+                  }}
+                />
+                {!stripeConnected ? "Not connected" : stripeComplete ? "Connected" : "Finish setup"}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <PressableButton
+                baseStyle={shell.buttonBlue}
+                onClick={() => (window.location.href = "/api/stripe/connect/start")}
+              >
+                {!stripeConnected ? "Connect Stripe" : "Manage Stripe"}
+              </PressableButton>
+
+              {stripeConnected && !stripeComplete && (
+                <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
+                  Finish onboarding to enable payouts.
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
   );
 }
