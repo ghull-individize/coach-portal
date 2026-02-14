@@ -355,7 +355,7 @@ export default function ConnectionsPage() {
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
     
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Paste your chatbot ID so Individize can route bookings to your Stripe + Calendar.
+                  Paste your chatbot ID so Individize can route bookings to your Payments + Calendar.
                 </p>
               </div>
               <div style={shell.badge(chatbotConnected)}>
@@ -473,41 +473,7 @@ export default function ConnectionsPage() {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stripe</h2>
-                <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Lets clients pay, then your booking gets marked as paid and synced.
-                </p>
-              </div>
-              <div style={shell.badge(stripeConnected && stripeComplete)}>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 999,
-                    background: stripeConnected ? "#00b478" : "#999",
-                  }}
-                />
-                {!stripeConnected ? "Not connected" : stripeComplete ? "Connected" : "Finish setup"}
-              </div>
-            </div>
 
-            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <PressableButton
-                baseStyle={shell.buttonBlue}
-                onClick={() => (window.location.href = "/api/stripe/connect/start")}
-              >
-                {!stripeConnected ? "Connect Stripe" : "Manage Stripe"}
-              </PressableButton>
-
-              {stripeConnected && !stripeComplete && (
-                <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
-                  Finish onboarding to enable payouts.
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
