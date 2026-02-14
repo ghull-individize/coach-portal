@@ -5,9 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { shell, brand } from "../ui";
 
 type ClientRow = {
-stripe_account_id: string | null;
-  stripe_onboarding_complete: boolean | null;
-  stripe_connected_at: string | null;
+
   google_calendar_id: string | null;
   google_connected_at: string | null;
   chatbot_key: string | null;
@@ -139,7 +137,7 @@ export default function ConnectionsPage() {
 
       const { data: rows, error } = await supabase
         .from("clients")
-        .select("stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url")
+        .select("google_calendar_id,google_connected_at,chatbot_key,chatbot_url,square_payment_link,square_connected_at,square_merchant_id")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -238,8 +236,8 @@ export default function ConnectionsPage() {
   if (loading) return <div style={shell.page}>Loading…</div>;
 
   const googleConnected = !!row?.google_connected_at || !!row?.google_calendar_id;
-  const stripeConnected = !!row?.stripe_account_id;
-  const stripeComplete = !!row?.stripe_onboarding_complete;
+
+  const squareConnected = !!row?.square_connected_at || !!row?.square_merchant_id || !!(row as any)?.square_payment_link;
   const chatbotConnected = !!(row?.chatbot_key && row.chatbot_key.trim().length > 0);
 
   return (
@@ -350,6 +348,9 @@ export default function ConnectionsPage() {
           </p>
         </div>
       </details>
+    </div>
+
+    <div style={shell.card}>
 
 
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
