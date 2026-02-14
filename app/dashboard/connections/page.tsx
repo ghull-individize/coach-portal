@@ -462,19 +462,6 @@ export default function ConnectionsPage() {
             </div>
           </div>
 
-          {/* Stripe */}
-          <div style={shell.card}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-
     </div>
   );
 }
