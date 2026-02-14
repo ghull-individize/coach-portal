@@ -5,13 +5,16 @@ import { supabase } from "@/lib/supabase";
 import { shell, brand } from "../ui";
 
 type ClientRow = {
-  stripe_account_id: string | null;
+stripe_account_id: string | null;
   stripe_onboarding_complete: boolean | null;
   stripe_connected_at: string | null;
   google_calendar_id: string | null;
   google_connected_at: string | null;
   chatbot_key: string | null;
   chatbot_url: string | null;
+  square_payment_link?: string | null;
+  square_connected_at?: string | null;
+  square_merchant_id?: string | null;
 };
 
 function PressableButton(
@@ -91,6 +94,9 @@ export default function ConnectionsPage() {
 
   const [chatbotKey, setChatbotKey] = useState("");
   const [chatbotUrl, setChatbotUrl] = useState("");
+  const [squareLink, setSquareLink] = useState("");
+  const [squareSaving, setSquareSaving] = useState(false);
+  const [squareSaved, setSquareSaved] = useState<string | null>(null);
   const [chatbotSaving, setChatbotSaving] = useState(false);
   const [chatbotSaved, setChatbotSaved] = useState<string | null>(null);
 
@@ -113,7 +119,7 @@ export default function ConnectionsPage() {
       // ensureClientRowExists: create a clients row for first-time users (natural bootstrap)
       const { data: existingRows, error: existingErr } = await supabase
         .from("clients")
-        .select("id")
+        .select("id,square_payment_link,square_connected_at,square_merchant_id")
         .eq("user_id", user.id)
         .limit(1);
 
@@ -150,6 +156,7 @@ export default function ConnectionsPage() {
           setRow(r);
           setChatbotKey(r.chatbot_key ?? "");
           setChatbotUrl(r.chatbot_url ?? "");
+        setSquareLink((r as any).square_payment_link ?? "");
         }
       }
 
@@ -158,6 +165,41 @@ export default function ConnectionsPage() {
       setLoading(false);
     })();
   }, []);
+
+  async function saveSquareLink() {
+    try {
+      setSquareSaved(null);
+      setSquareSaving(true);
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+
+      const user = sessionData.session?.user;
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const link = squareLink.trim();
+      if (!link) throw new Error("Please paste your Square payment link first.");
+
+      const { error } = await supabase
+        .from("clients")
+        .upsert(
+          { user_id: user.id, email: user.email ?? null, square_payment_link: link },
+          { onConflict: "user_id" }
+        );
+
+      if (error) throw new Error(error.message);
+
+      setSquareSaved("saved");
+    } catch (e) {
+      setSquareSaved(null);
+      alert(e?.message ?? String(e));
+    } finally {
+      setSquareSaving(false);
+    }
+  }
 
   async function saveChatbot() {
     try {
@@ -258,7 +300,40 @@ export default function ConnectionsPage() {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
+                
+      <h2 style={{ marginTop: 28 }}>Square</h2>
+      <p style={{ marginTop: 6, opacity: 0.75 }}>
+        Paste your Square payment/checkout link (your clients will choose options on Square).
+      </p>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+        <a href="/api/square/start" style={{ padding: "10px 12px", border: "1px solid #ccc", borderRadius: 8, textDecoration: "none" }}>
+          Connect Square
+        </a>
+        <span style={{ opacity: 0.8 }}>
+          {row?.square_connected_at ? "Connected ✅" : "Not connected"}
+        </span>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <input
+          value={squareLink}
+          onChange={(e) => setSquareLink(e.target.value)}
+          placeholder="https://square.link/u/..."
+          style={{ padding: 10, width: 420, maxWidth: "100%" }}
+        />
+        <button
+          onClick={saveSquareLink}
+          disabled={squareSaving}
+          style={{ padding: 10, marginLeft: 12 }}
+        >
+          {squareSaving ? "Saving…" : "Save link"}
+        </button>
+        {squareSaved && <span style={{ marginLeft: 10 }}>✅ Saved</span>}
+      </div>
+
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
+    
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
                   Paste your chatbot ID so Individize can route bookings to your Stripe + Calendar.
                 </p>
