@@ -332,6 +332,25 @@ export default function ConnectionsPage() {
         {squareSaved && <span style={{ marginLeft: 10 }}>✅ Saved</span>}
       </div>
 
+      <details style={{ marginTop: 12 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+          How do I connect Square?
+        </summary>
+        <div style={{ marginTop: 10, lineHeight: 1.5, opacity: 0.9 }}>
+          <ol style={{ paddingLeft: 18 }}>
+            <li>Click <b>Connect Square</b> and sign in to your Square account.</li>
+            <li>In Square, create your offerings (for example: Adult / Child / Senior pricing).</li>
+            <li>Create a <b>Payment Link / Checkout Link</b> in Square.</li>
+            <li>Copy the link and paste it into <b>Square Payment Link</b>, then click <b>Save link</b>.</li>
+            <li>That’s it — clients pick their option on Square’s checkout page and pay you directly.</li>
+          </ol>
+          <p style={{ marginTop: 8 }}>
+            Tip: If you update pricing later, you can just update the Square link you paste here.
+          </p>
+        </div>
+      </details>
+
+
       <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
     
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
