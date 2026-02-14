@@ -195,7 +195,8 @@ export default function ConnectionsPage() {
       setSquareSaved("saved");
     } catch (e) {
       setSquareSaved(null);
-      alert(e?.message ?? String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(msg);
     } finally {
       setSquareSaving(false);
     }
