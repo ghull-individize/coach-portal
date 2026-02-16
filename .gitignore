@@ -43,3 +43,13 @@ next-env.d.ts
 # editor swap files
 *.swp
 sql/*.sql
+
+# Local backups / scratch
+_backups/
+*.bak_*
+*.bak
+*.bak_*.ts
+*.bak_*.tsx
+*.bak_*.js
+*.bak_*.ts
+app/dashboard/connections/page.tsx.bak_*

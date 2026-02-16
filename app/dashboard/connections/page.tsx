@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { shell, brand } from "../ui";
 
 type ClientRow = {
-stripe_account_id: string | null;
-  stripe_onboarding_complete: boolean | null;
-  stripe_connected_at: string | null;
+  user_id: string | null;
+  email: string | null;
+
+  // Square
+  square_merchant_id: string | null;
+  square_connected_at: string | null;
+  square_payment_link: string | null;
+
+  // Google
   google_calendar_id: string | null;
   google_connected_at: string | null;
+
+  // Chatbot
   chatbot_key: string | null;
   chatbot_url: string | null;
-  square_payment_link?: string | null;
-  square_connected_at?: string | null;
-  square_merchant_id?: string | null;
 };
 
 function PressableButton(
@@ -31,6 +36,7 @@ function PressableButton(
     onTouchEnd,
     ...rest
   } = props;
+
   const [hover, setHover] = useState(false);
   const [down, setDown] = useState(false);
 
@@ -38,256 +44,58 @@ function PressableButton(
   const pressed = down;
 
   return (
-    <div style={shell.page}>
-      <div style={shell.container}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <h1 style={shell.h1}>
-              Connections{" "}
-              <span
-                style={{
-                  display: "inline-block",
-                  marginLeft: 10,
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  background: "rgba(0,0,0,0.06)",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: "rgba(0,0,0,0.65)",
-                }}
-              >
-                {email ?? ""}
-              </span>
-            </h1>
-            <p style={shell.sub}>
-              Connect your tools so bookings + payments can be handled automatically.
-            </p>
-            {err && (
-              <div style={{ marginTop: 10, color: "#b00020", fontWeight: 700 }}>
-                {err}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Square */}
-        <div style={shell.card}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Square</h2>
-              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                Paste your Square payment/checkout link (clients choose their option on Square).
-              </p>
-            </div>
-
-            <div style={shell.badge(squareConnected)}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: squareConnected ? "#00b478" : "#999",
-                }}
-              />
-              {squareConnected ? "Connected" : "Not connected"}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <PressableButton
-              baseStyle={shell.buttonBlue}
-              onClick={() => (window.location.href = "/api/square/start")}
-            >
-              {squareConnected ? "Reconnect Square" : "Connect Square"}
-            </PressableButton>
-
-            <span style={{ color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
-              Connect your Square account, then paste your payment link below.
-            </span>
-          </div>
-
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              value={squareLink}
-              onChange={(e) => setSquareLink(e.target.value)}
-              placeholder="https://square.link/u/..."
-              style={{
-                flex: "1 1 380px",
-                padding: "12px 12px",
-                borderRadius: 12,
-                border: "1px solid rgba(0,0,0,0.14)",
-                fontSize: 15,
-                fontWeight: 700,
-                outline: "none",
-              }}
-            />
-
-            <PressableButton baseStyle={shell.buttonGrey} onClick={saveSquareLink} disabled={squareSaving}>
-              {squareSaving ? "Saving..." : "Save link"}
-            </PressableButton>
-
-            {squareSaved && <span style={{ marginLeft: 6, fontWeight: 800, color: "rgba(0,0,0,0.6)" }}>✅ Saved</span>}
-          </div>
-
-          <details style={{ marginTop: 12 }}>
-            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-              How do I connect Square?
-            </summary>
-            <div style={{ marginTop: 10, lineHeight: 1.5, opacity: 0.9 }}>
-              <ol style={{ paddingLeft: 18 }}>
-                <li>Click <b>Connect Square</b> and sign in to your Square account.</li>
-                <li>In Square, create your offerings (Adult / Child / Senior, etc.).</li>
-                <li>Create a <b>Payment Link / Checkout Link</b> in Square.</li>
-                <li>Copy the link and paste it above, then click <b>Save link</b>.</li>
-                <li>Clients will pick their option on Square’s checkout page and pay you directly.</li>
-              </ol>
-              <p style={{ marginTop: 8 }}>
-                Tip: If you update pricing later, just update the Square link you paste here.
-              </p>
-            </div>
-          </details>
-        </div>
-
-        {/* Chatbot */}
-        <div style={shell.card}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
-              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                Paste your chatbot ID so Individize can route bookings to your calendar + payment link.
-              </p>
-            </div>
-
-            <div style={shell.badge(chatbotConnected)}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: chatbotConnected ? "#00b478" : "#999",
-                }}
-              />
-              {chatbotConnected ? "Connected" : "Not connected"}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontWeight: 800, fontSize: 14 }}>Paste chatbot ID here:</label>
-              <input
-                value={chatbotKey}
-                onChange={(e) => setChatbotKey(e.target.value)}
-                placeholder="e.g. stammer_abc123"
-                style={{
-                  padding: "12px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.14)",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  outline: "none",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "grid", gap: 6 }}>
-              <label style={{ fontWeight: 800, fontSize: 14 }}>Chatbot link (optional)</label>
-              <input
-                value={chatbotUrl}
-                onChange={(e) => setChatbotUrl(e.target.value)}
-                placeholder="https://..."
-                style={{
-                  padding: "12px 12px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(0,0,0,0.14)",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  outline: "none",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <PressableButton baseStyle={shell.buttonBlue} onClick={saveChatbot} disabled={chatbotSaving}>
-                {chatbotSaving ? "Saving..." : "Save"}
-              </PressableButton>
-
-              {chatbotSaved && (
-                <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 700 }}>
-                  {chatbotSaved}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Google Calendar */}
-        <div style={shell.card}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Google Calendar</h2>
-              <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                Used to place paid bookings on your schedule automatically.
-              </p>
-            </div>
-
-            <div style={shell.badge(googleConnected)}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  background: googleConnected ? "#00b478" : "#999",
-                }}
-              />
-              {googleConnected ? "Connected" : "Not connected"}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <PressableButton baseStyle={shell.buttonBlue} onClick={() => (window.location.href = "/api/google/start")}>
-              {googleConnected ? "Reconnect Google" : "Connect Google"}
-            </PressableButton>
-
-            <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
-              We’ll request offline access so this keeps working.
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <button
+      {...rest}
+      onMouseEnter={(e) => {
+        setHover(true);
+        onMouseEnter?.(e);
+      }}
+      onMouseLeave={(e) => {
+        setHover(false);
+        setDown(false);
+        onMouseLeave?.(e);
+      }}
+      onMouseDown={(e) => {
+        setDown(true);
+        onMouseDown?.(e);
+      }}
+      onMouseUp={(e) => {
+        setDown(false);
+        onMouseUp?.(e);
+      }}
+      onTouchStart={(e) => {
+        setDown(true);
+        onTouchStart?.(e);
+      }}
+      onTouchEnd={(e) => {
+        setDown(false);
+        onTouchEnd?.(e);
+      }}
+      style={{
+        ...baseStyle,
+        ...style,
+        cursor: "pointer",
+        transition: "transform 140ms ease, box-shadow 140ms ease, filter 140ms ease",
+        transform: pressed
+          ? "translateY(0px) scale(0.985)"
+          : raised
+          ? "translateY(-2px)"
+          : "translateY(0px)",
+        boxShadow: pressed
+          ? "0 10px 18px rgba(0,0,0,0.12)"
+          : raised
+          ? "0 18px 36px rgba(0,0,0,0.16)"
+          : "0 12px 22px rgba(0,0,0,0.12)",
+        filter: pressed ? "brightness(0.98)" : raised ? "brightness(1.03)" : "brightness(1)",
+      }}
+    />
   );
+}
+
+function isLikelySquarePaymentLink(link: string) {
+  const v = link.trim();
+  if (!v) return false;
+  return /^https?:\/\/.+/i.test(v) && (v.includes("square.link") || v.includes("squareup.com"));
 }
 
 export default function ConnectionsPage() {
@@ -296,114 +104,90 @@ export default function ConnectionsPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const [chatbotKey, setChatbotKey] = useState("");
-  const [chatbotUrl, setChatbotUrl] = useState("");
+  // Square
   const [squareLink, setSquareLink] = useState("");
   const [squareSaving, setSquareSaving] = useState(false);
   const [squareSaved, setSquareSaved] = useState<string | null>(null);
+
+  // Chatbot
+  const [chatbotKey, setChatbotKey] = useState("");
+  const [chatbotUrl, setChatbotUrl] = useState("");
   const [chatbotSaving, setChatbotSaving] = useState(false);
   const [chatbotSaved, setChatbotSaved] = useState<string | null>(null);
 
+  const sqQueryStatus = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const url = new URL(window.location.href);
+    const sq = url.searchParams.get("sq");
+    const errorMsg = url.searchParams.get("error");
+    return { sq, errorMsg } as { sq: string | null; errorMsg: string | null };
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        setErr(sessionError.message);
-        setLoading(false);
-        return;
-      }
-
-      const user = sessionData.session?.user;
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      setEmail(user.email ?? null);
-      // ensureClientRowExists: create a clients row for first-time users (natural bootstrap)
-      const { data: existingRows, error: existingErr } = await supabase
-        .from("clients")
-        .select("id,square_payment_link,square_connected_at,square_merchant_id")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (!existingErr && (!existingRows || existingRows.length === 0)) {
-        // Create a minimal row; user is creating their own profile via the portal
-        const { error: insertErr } = await supabase.from("clients").insert({
-          user_id: user.id,
-          email: user.email,
-          name: "",
-        });
-
-        if (insertErr) {
-          setErr("bootstrap insert failed: " + insertErr.message);
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          setErr(sessionError.message);
+          setLoading(false);
+          return;
         }
-      }
 
+        const user = sessionData.session?.user;
+        if (!user) {
+          window.location.href = "/login";
+          return;
+        }
 
-      const { data: rows, error } = await supabase
-        .from("clients")
-        .select("stripe_account_id,stripe_onboarding_complete,stripe_connected_at,google_calendar_id,google_connected_at,chatbot_key,chatbot_url")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        setEmail(user.email ?? null);
 
-      if (error) setErr(error.message);
-      else {
-        const data = (rows && rows.length ? rows[0] : null) as any;
-        if (!data) {
-          // No client row yet
-          setRow(null as any);
-          setChatbotKey("");
-          setChatbotUrl("");
+        // IMPORTANT: Square callback upserts on user_id (onConflict: user_id).
+        // Reads/updates should also be user_id-based.
+        const selectCols =
+          "user_id,email,square_merchant_id,square_connected_at,square_payment_link,google_calendar_id,google_connected_at,chatbot_key,chatbot_url";
+
+        const { data, error } = await supabase.from("clients").select(selectCols).eq("user_id", user.id).single();
+
+        // If row doesn't exist yet, create it and re-fetch.
+        if (error && (error as any).code === "PGRST116") {
+          const { error: upsertErr } = await supabase
+            .from("clients")
+            .upsert({ user_id: user.id, email: user.email ?? null }, { onConflict: "user_id" });
+
+          if (upsertErr) throw new Error(upsertErr.message);
+
+          const refetch = await supabase.from("clients").select(selectCols).eq("user_id", user.id).single();
+          if (refetch.error) throw new Error(refetch.error.message);
+
+          const r = refetch.data as ClientRow;
+          setRow(r);
+          setSquareLink(r.square_payment_link ?? "");
+          setChatbotKey(r.chatbot_key ?? "");
+          setChatbotUrl(r.chatbot_url ?? "");
+        } else if (error) {
+          throw new Error(error.message);
         } else {
           const r = data as ClientRow;
           setRow(r);
+          setSquareLink(r.square_payment_link ?? "");
           setChatbotKey(r.chatbot_key ?? "");
           setChatbotUrl(r.chatbot_url ?? "");
-        setSquareLink((r as any).square_payment_link ?? "");
         }
+
+        // Surface Square OAuth result
+        if (sqQueryStatus?.sq === "connected") {
+          setSquareSaved("Square connected.");
+        } else if (sqQueryStatus?.sq === "error") {
+          setErr(sqQueryStatus.errorMsg || "Square connection failed.");
+        }
+      } catch (e: any) {
+        setErr(e?.message ?? "Failed to load connections.");
+      } finally {
+        setLoading(false);
       }
-
-
-
-      setLoading(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function saveSquareLink() {
-    try {
-      setSquareSaved(null);
-      setSquareSaving(true);
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw new Error(sessionError.message);
-
-      const user = sessionData.session?.user;
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const link = squareLink.trim();
-      if (!link) throw new Error("Please paste your Square payment link first.");
-
-      const { error } = await supabase
-        .from("clients")
-        .upsert(
-          { user_id: user.id, email: user.email ?? null, square_payment_link: link },
-          { onConflict: "user_id" }
-        );
-
-      if (error) throw new Error(error.message);
-
-      setSquareSaved("saved");
-    } catch (e) {
-      setSquareSaved(null);
-      alert(e?.message ?? String(e));
-    } finally {
-      setSquareSaving(false);
-    }
-  }
 
   async function saveChatbot() {
     try {
@@ -438,10 +222,43 @@ export default function ConnectionsPage() {
     }
   }
 
+  async function saveSquarePaymentLink() {
+    try {
+      setSquareSaved(null);
+      setSquareSaving(true);
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+
+      const user = sessionData.session?.user;
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const cleanLink = squareLink.trim() || null;
+
+      const { error } = await supabase.from("clients").update({ square_payment_link: cleanLink }).eq("user_id", user.id);
+      if (error) throw new Error(error.message);
+
+      setRow((prev) => (prev ? { ...prev, square_payment_link: cleanLink } : prev));
+      setSquareSaved("Saved.");
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to save Square payment link.");
+    } finally {
+      setSquareSaving(false);
+    }
+  }
+
   if (loading) return <div style={shell.page}>Loading…</div>;
 
   const googleConnected = !!row?.google_connected_at || !!row?.google_calendar_id;
   const chatbotConnected = !!(row?.chatbot_key && row.chatbot_key.trim().length > 0);
+
+  const squareConnected = !!row?.square_connected_at || !!row?.square_merchant_id;
+  const squareLinkSaved = !!(row?.square_payment_link && row.square_payment_link.trim().length > 0);
+
+  const squareLinkLooksOk = squareLink.trim().length === 0 || isLikelySquarePaymentLink(squareLink);
 
   return (
     <div style={shell.page}>
@@ -490,7 +307,7 @@ export default function ConnectionsPage() {
         )}
 
         <div style={{ marginTop: 22, display: "grid", gap: 16 }}>
-          {/* Chatbot */}
+          {/* Square Card */}
           <div style={shell.card}>
             <div
               style={{
@@ -502,61 +319,107 @@ export default function ConnectionsPage() {
               }}
             >
               <div>
-                
-      <h2 style={{ marginTop: 28 }}>Square</h2>
-      <p style={{ marginTop: 6, opacity: 0.75 }}>
-        Paste your Square payment/checkout link (your clients will choose options on Square).
-      </p>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-        <a href="/api/square/start" style={{ padding: "10px 12px", border: "1px solid #ccc", borderRadius: 8, textDecoration: "none" }}>
-          Connect Square
-        </a>
-        <span style={{ opacity: 0.8 }}>
-          {row?.square_connected_at ? "Connected ✅" : "Not connected"}
-        </span>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <input
-          value={squareLink}
-          onChange={(e) => setSquareLink(e.target.value)}
-          placeholder="https://square.link/u/..."
-          style={{ padding: 10, width: 420, maxWidth: "100%" }}
-        />
-        <button
-          onClick={saveSquareLink}
-          disabled={squareSaving}
-          style={{ padding: 10, marginLeft: 12 }}
-        >
-          {squareSaving ? "Saving…" : "Save link"}
-        </button>
-        {squareSaved && <span style={{ marginLeft: 10 }}>✅ Saved</span>}
-      </div>
-
-      <details style={{ marginTop: 12 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-          How do I connect Square?
-        </summary>
-        <div style={{ marginTop: 10, lineHeight: 1.5, opacity: 0.9 }}>
-          <ol style={{ paddingLeft: 18 }}>
-            <li>Click <b>Connect Square</b> and sign in to your Square account.</li>
-            <li>In Square, create your offerings (for example: Adult / Child / Senior pricing).</li>
-            <li>Create a <b>Payment Link / Checkout Link</b> in Square.</li>
-            <li>Copy the link and paste it into <b>Square Payment Link</b>, then click <b>Save link</b>.</li>
-            <li>That’s it — clients pick their option on Square’s checkout page and pay you directly.</li>
-          </ol>
-          <p style={{ marginTop: 8 }}>
-            Tip: If you update pricing later, you can just update the Square link you paste here.
-          </p>
-        </div>
-      </details>
-
-
-      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
-    
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Square</h2>
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Paste your chatbot ID so Individize can route bookings to your Stripe + Calendar.
+                  Connect Square, then paste your Square Payment Link. Clients will pay you directly.
+                </p>
+              </div>
+
+              <div style={shell.badge(squareConnected)}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: squareConnected ? "#00b478" : "#999",
+                  }}
+                />
+                {squareConnected ? "Connected" : "Not connected"}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <PressableButton baseStyle={shell.buttonBlue} onClick={() => (window.location.href = "/api/square/start")}>
+                {squareConnected ? "Reconnect Square" : "Connect Square"}
+              </PressableButton>
+
+              <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
+                We store your merchant ID + connection time.
+              </span>
+            </div>
+
+            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={{ fontWeight: 800, fontSize: 14 }}>Square Payment Link</label>
+                <input
+                  value={squareLink}
+                  onChange={(e) => setSquareLink(e.target.value)}
+                  placeholder="https://square.link/..."
+                  style={{
+                    padding: "12px 12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.14)",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    outline: "none",
+                  }}
+                />
+                {!squareLinkLooksOk && (
+                  <div style={{ color: "rgba(190, 80, 0, 0.95)", fontWeight: 700, fontSize: 13 }}>
+                    That doesn’t look like a Square payment link. You can still save it, but double-check.
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <PressableButton
+                  baseStyle={shell.buttonBlue}
+                  onClick={saveSquarePaymentLink}
+                  disabled={squareSaving}
+                >
+                  {squareSaving ? "Saving..." : "Save Payment Link"}
+                </PressableButton>
+
+                {squareSaved && (
+                  <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 700 }}>
+                    {squareSaved}
+                  </span>
+                )}
+
+                {squareLinkSaved && !squareSaved && (
+                  <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 700 }}>
+                    Payment link saved.
+                  </span>
+                )}
+              </div>
+
+              <details style={{ marginTop: 2 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>
+                  Help: creating a Square Payment Link
+                </summary>
+                <div style={{ marginTop: 10, color: "rgba(0,0,0,0.65)", fontWeight: 600, lineHeight: 1.5 }}>
+                  In Square, create a Payment Link with your packages (adult/child/senior/variable price, quantity, etc).
+                  Paste that link here. n8n will send it to clients, and booking runs after confirmation.
+                </div>
+              </details>
+            </div>
+          </div>
+
+          {/* Chatbot Card */}
+          <div style={shell.card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
+                <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
+                  Paste your chatbot ID so n8n can route bookings to your Square payment link + Calendar.
                 </p>
               </div>
               <div style={shell.badge(chatbotConnected)}>
@@ -621,7 +484,7 @@ export default function ConnectionsPage() {
             </div>
           </div>
 
-          {/* Google Calendar */}
+          {/* Google Card */}
           <div style={shell.card}>
             <div
               style={{
@@ -635,7 +498,7 @@ export default function ConnectionsPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Google Calendar</h2>
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Used to place paid bookings on your schedule automatically.
+                  Used to place confirmed bookings on your schedule automatically.
                 </p>
               </div>
               <div style={shell.badge(googleConnected)}>
@@ -659,52 +522,6 @@ export default function ConnectionsPage() {
               <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
                 We’ll request offline access so this keeps working.
               </span>
-            </div>
-          </div>
-
-          {/* Stripe */}
-          <div style={shell.card}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Stripe</h2>
-                <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Lets clients pay, then your booking gets marked as paid and synced.
-                </p>
-              </div>
-              <div style={shell.badge(stripeConnected && stripeComplete)}>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 999,
-                    background: stripeConnected ? "#00b478" : "#999",
-                  }}
-                />
-                {!stripeConnected ? "Not connected" : stripeComplete ? "Connected" : "Finish setup"}
-              </div>
-            </div>
-
-            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <PressableButton
-                baseStyle={shell.buttonBlue}
-                onClick={() => (window.location.href = "/api/stripe/connect/start")}
-              >
-                {!stripeConnected ? "Connect Stripe" : "Manage Stripe"}
-              </PressableButton>
-
-              {stripeConnected && !stripeComplete && (
-                <span style={{ alignSelf: "center", color: "rgba(0,0,0,0.55)", fontWeight: 600 }}>
-                  Finish onboarding to enable payouts.
-                </span>
-              )}
             </div>
           </div>
         </div>

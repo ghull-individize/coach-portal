@@ -69,8 +69,10 @@ export async function GET(req: Request) {
   }
 
   const merchantId = tokenJson.merchant_id || null;
+  const accessToken = tokenJson.access_token || null;
+  const refreshToken = tokenJson.refresh_token || null;
+  const expiresAt = tokenJson.expires_at ? new Date(tokenJson.expires_at).toISOString() : null;
 
-  // Persist "connected" marker + merchant id on clients row (canonical key: user_id)
   const { error: upsertErr } = await supabase
     .from("clients")
     .upsert(
@@ -79,6 +81,9 @@ export async function GET(req: Request) {
         email: user.email ?? null,
         square_connected_at: new Date().toISOString(),
         square_merchant_id: merchantId,
+        square_access_token: accessToken,
+        square_refresh_token: refreshToken,
+        square_expires_at: expiresAt,
       },
       { onConflict: "user_id" }
     );
