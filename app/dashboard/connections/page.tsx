@@ -240,7 +240,7 @@ export default function ConnectionsPage() {
       }
 
       if (!/^\d+$/.test(trimmed)) {
-        throw new Error("Chatbot ID must be a number (e.g. 28327).");
+        throw new Error("Chatbot ID must be a number (e.g. 12345).");
       }
 
       const numeric = Number(trimmed);
@@ -422,7 +422,7 @@ export default function ConnectionsPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Enter your numeric chatbot ID (e.g. 28327) so n8n can route bookings correctly.
+                  Enter your numeric chatbot ID (e.g. 12345) so n8n can route bookings correctly.
                 </p>
               </div>
 
@@ -445,7 +445,7 @@ export default function ConnectionsPage() {
                 <input
                   value={chatbotId}
                   onChange={(e) => setChatbotId(e.target.value)}
-                  placeholder="e.g. 28327"
+                  placeholder="e.g. 12345"
                   inputMode="numeric"
                   style={{
                     padding: "12px 12px",
