@@ -16,10 +16,11 @@ type ClientRow = {
   // Google
   google_calendar_id: string | null;
   google_connected_at: string | null;
+};
 
-  // Chatbot
-  chatbot_key: string | null;
-  chatbot_url: string | null;
+type ChatbotRow = {
+  chatbot_id: number | null;
+  active: boolean | null;
 };
 
 function PressableButton(
@@ -109,9 +110,8 @@ export default function ConnectionsPage() {
   const [squareSaving, setSquareSaving] = useState(false);
   const [squareSaved, setSquareSaved] = useState<string | null>(null);
 
-  // Chatbot
-  const [chatbotKey, setChatbotKey] = useState("");
-  const [chatbotUrl, setChatbotUrl] = useState("");
+  // Chatbot (NEW: numeric id stored in public.chatbots.chatbot_id)
+  const [chatbotId, setChatbotId] = useState("");
   const [chatbotSaving, setChatbotSaving] = useState(false);
   const [chatbotSaved, setChatbotSaved] = useState<string | null>(null);
 
@@ -141,40 +141,35 @@ export default function ConnectionsPage() {
 
         setEmail(user.email ?? null);
 
-        // IMPORTANT: Square callback upserts on user_id (onConflict: user_id).
-        // Reads/updates should also be user_id-based.
+        // Load clients row (Square + Google)
         const selectCols =
-          "user_id,email,square_merchant_id,square_connected_at,square_payment_link,google_calendar_id,google_connected_at,chatbot_key,chatbot_url";
+          "user_id,email,square_merchant_id,square_connected_at,square_payment_link,google_calendar_id,google_connected_at";
 
-        const { data, error } = await supabase.from("clients").select(selectCols).eq("user_id", user.id).single();
+        const { data, error } = await supabase
+          .from("clients")
+          .select(selectCols)
+          .eq("user_id", user.id)
+          .single();
 
-        // If row doesn't exist yet, create it and re-fetch.
-        if (error && (error as any).code === "PGRST116") {
-          const { error: upsertErr } = await supabase
-            .from("clients")
-            .upsert({ user_id: user.id, email: user.email ?? null }, { onConflict: "user_id" });
+        if (error) throw new Error(error.message);
 
-          if (upsertErr) throw new Error(upsertErr.message);
+        const r = data as ClientRow;
+        setRow(r);
+        setSquareLink(r.square_payment_link ?? "");
 
-          const refetch = await supabase.from("clients").select(selectCols).eq("user_id", user.id).single();
-          if (refetch.error) throw new Error(refetch.error.message);
+        // Load chatbot id from public.chatbots (by client_id = user.id)
+        const { data: botData, error: botErr } = await supabase
+          .from("chatbots")
+          .select("chatbot_id,active")
+          .eq("client_id", user.id)
+          .limit(1)
+          .maybeSingle();
 
-          const r = refetch.data as ClientRow;
-          setRow(r);
-          setSquareLink(r.square_payment_link ?? "");
-          setChatbotKey(r.chatbot_key ?? "");
-          setChatbotUrl(r.chatbot_url ?? "");
-        } else if (error) {
-          throw new Error(error.message);
-        } else {
-          const r = data as ClientRow;
-          setRow(r);
-          setSquareLink(r.square_payment_link ?? "");
-          setChatbotKey(r.chatbot_key ?? "");
-          setChatbotUrl(r.chatbot_url ?? "");
+        if (!botErr && botData) {
+          const b = botData as ChatbotRow;
+          setChatbotId(b.chatbot_id ? String(b.chatbot_id) : "");
         }
 
-        // Surface Square OAuth result
         if (sqQueryStatus?.sq === "connected") {
           setSquareSaved("Square connected.");
         } else if (sqQueryStatus?.sq === "error") {
@@ -188,39 +183,6 @@ export default function ConnectionsPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function saveChatbot() {
-    try {
-      setChatbotSaved(null);
-      setChatbotSaving(true);
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw new Error(sessionError.message);
-
-      const user = sessionData.session?.user;
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const cleanKey = chatbotKey.trim() || null;
-      const cleanUrl = chatbotUrl.trim() || null;
-
-      const { error } = await supabase
-        .from("clients")
-        .update({ chatbot_key: cleanKey, chatbot_url: cleanUrl })
-        .eq("user_id", user.id);
-
-      if (error) throw new Error(error.message);
-
-      setRow((prev) => (prev ? { ...prev, chatbot_key: cleanKey, chatbot_url: cleanUrl } : prev));
-      setChatbotSaved("Saved.");
-    } catch (e: any) {
-      setErr(e?.message ?? "Failed to save chatbot details.");
-    } finally {
-      setChatbotSaving(false);
-    }
-  }
 
   async function saveSquarePaymentLink() {
     try {
@@ -238,7 +200,11 @@ export default function ConnectionsPage() {
 
       const cleanLink = squareLink.trim() || null;
 
-      const { error } = await supabase.from("clients").update({ square_payment_link: cleanLink }).eq("user_id", user.id);
+      const { error } = await supabase
+        .from("clients")
+        .update({ square_payment_link: cleanLink })
+        .eq("user_id", user.id);
+
       if (error) throw new Error(error.message);
 
       setRow((prev) => (prev ? { ...prev, square_payment_link: cleanLink } : prev));
@@ -250,15 +216,66 @@ export default function ConnectionsPage() {
     }
   }
 
+  async function saveChatbotId() {
+    try {
+      setChatbotSaved(null);
+      setChatbotSaving(true);
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(sessionError.message);
+
+      const user = sessionData.session?.user;
+      if (!user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const trimmed = chatbotId.trim();
+      if (!trimmed) {
+        // allow clearing
+        const { error } = await supabase.from("chatbots").update({ chatbot_id: null }).eq("client_id", user.id);
+        if (error) throw new Error(error.message);
+        setChatbotSaved("Cleared.");
+        return;
+      }
+
+      if (!/^\d+$/.test(trimmed)) {
+        throw new Error("Chatbot ID must be a number (e.g. 28327).");
+      }
+
+      const numeric = Number(trimmed);
+
+      // Upsert by client_id (requires unique index on chatbots.client_id)
+      const { error } = await supabase
+        .from("chatbots")
+        .upsert(
+          {
+            client_id: user.id,
+            chatbot_id: numeric,
+            active: true,
+          },
+          { onConflict: "client_id" }
+        );
+
+      if (error) throw new Error(error.message);
+
+      setChatbotSaved("Saved.");
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to save chatbot ID.");
+    } finally {
+      setChatbotSaving(false);
+    }
+  }
+
   if (loading) return <div style={shell.page}>Loading…</div>;
 
   const googleConnected = !!row?.google_connected_at || !!row?.google_calendar_id;
-  const chatbotConnected = !!(row?.chatbot_key && row.chatbot_key.trim().length > 0);
 
   const squareConnected = !!row?.square_connected_at || !!row?.square_merchant_id;
   const squareLinkSaved = !!(row?.square_payment_link && row.square_payment_link.trim().length > 0);
-
   const squareLinkLooksOk = squareLink.trim().length === 0 || isLikelySquarePaymentLink(squareLink);
+
+  const chatbotConnected = chatbotId.trim().length > 0;
 
   return (
     <div style={shell.page}>
@@ -372,11 +389,7 @@ export default function ConnectionsPage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <PressableButton
-                  baseStyle={shell.buttonBlue}
-                  onClick={saveSquarePaymentLink}
-                  disabled={squareSaving}
-                >
+                <PressableButton baseStyle={shell.buttonBlue} onClick={saveSquarePaymentLink} disabled={squareSaving}>
                   {squareSaving ? "Saving..." : "Save Payment Link"}
                 </PressableButton>
 
@@ -392,20 +405,10 @@ export default function ConnectionsPage() {
                   </span>
                 )}
               </div>
-
-              <details style={{ marginTop: 2 }}>
-                <summary style={{ cursor: "pointer", fontWeight: 800, color: "rgba(0,0,0,0.7)" }}>
-                  Help: creating a Square Payment Link
-                </summary>
-                <div style={{ marginTop: 10, color: "rgba(0,0,0,0.65)", fontWeight: 600, lineHeight: 1.5 }}>
-                  In Square, create a Payment Link with your packages (adult/child/senior/variable price, quantity, etc).
-                  Paste that link here. n8n will send it to clients, and booking runs after confirmation.
-                </div>
-              </details>
             </div>
           </div>
 
-          {/* Chatbot Card */}
+          {/* Chatbot Card (ID only) */}
           <div style={shell.card}>
             <div
               style={{
@@ -419,9 +422,10 @@ export default function ConnectionsPage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Chatbot</h2>
                 <p style={{ marginTop: 10, color: "rgba(0,0,0,0.62)", fontWeight: 600 }}>
-                  Paste your chatbot ID so n8n can route bookings to your Square payment link + Calendar.
+                  Enter your numeric chatbot ID (e.g. 28327) so n8n can route bookings correctly.
                 </p>
               </div>
+
               <div style={shell.badge(chatbotConnected)}>
                 <span
                   style={{
@@ -437,28 +441,12 @@ export default function ConnectionsPage() {
 
             <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
               <div style={{ display: "grid", gap: 6 }}>
-                <label style={{ fontWeight: 800, fontSize: 14 }}>Paste chatbot ID here:</label>
+                <label style={{ fontWeight: 800, fontSize: 14 }}>Chatbot ID</label>
                 <input
-                  value={chatbotKey}
-                  onChange={(e) => setChatbotKey(e.target.value)}
-                  placeholder="e.g. stammer_abc123"
-                  style={{
-                    padding: "12px 12px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(0,0,0,0.14)",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gap: 6 }}>
-                <label style={{ fontWeight: 800, fontSize: 14 }}>Chatbot link (optional)</label>
-                <input
-                  value={chatbotUrl}
-                  onChange={(e) => setChatbotUrl(e.target.value)}
-                  placeholder="https://..."
+                  value={chatbotId}
+                  onChange={(e) => setChatbotId(e.target.value)}
+                  placeholder="e.g. 28327"
+                  inputMode="numeric"
                   style={{
                     padding: "12px 12px",
                     borderRadius: 12,
@@ -471,8 +459,8 @@ export default function ConnectionsPage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <PressableButton baseStyle={shell.buttonBlue} onClick={saveChatbot} disabled={chatbotSaving}>
-                  {chatbotSaving ? "Saving..." : "Save"}
+                <PressableButton baseStyle={shell.buttonBlue} onClick={saveChatbotId} disabled={chatbotSaving}>
+                  {chatbotSaving ? "Saving..." : "Save Chatbot ID"}
                 </PressableButton>
 
                 {chatbotSaved && (
